@@ -3,8 +3,16 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 using namespace std;
+using namespace cv;
 
 // take number image type number (from cv::Mat.type()), get OpenCV's enum string.
 string getImgType(int imgTypeInt);
 
 void debayer_rggb_to_u8xbpp_hqlinear(const cv::Mat& in, cv::Mat& out, int offset_x, int offset_y);
+
+void generate_filtered_image(const Mat& input_img, Mat& output_img, Vec3f& row_filter, Vec3f& col_filter);
+
+// Generate a bayer raw image. 
+void generate_bayer_raw(const Mat& img_in, Mat& img_out, Mat& img_r, Mat& img_g, Mat& img_b, bayer_pattern_e pattern);
+
+#include "util.inl"
