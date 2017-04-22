@@ -28,7 +28,8 @@ string getImgType(int imgTypeInt)
     return "unknown image type";
 }
 
-void debayer_rggb_to_u8xbpp_hqlinear(const cv::Mat& in, cv::Mat& dest, int offset_x, int offset_y)
+// High Quality Linear algorithm
+void debayer_u8xbpp_hqlinear(const cv::Mat& in, cv::Mat& dest, int offset_x, int offset_y)
 {
 	int height = in.rows;
 	int width = in.cols;
@@ -40,12 +41,12 @@ void debayer_rggb_to_u8xbpp_hqlinear(const cv::Mat& in, cv::Mat& dest, int offse
 	const float fs5_b = -0.125f, fs5_c = -0.125f, fs5_d =  0.25f;
 	const float fs6_a = 0.5f , fs6_b = 0.625f, fs6_c = 0.625f, fs6_d = 0.75f;
 
-	for (int row = 2; row < height-2; row += 1) {
-		for (int col = 2; col < width-2; col += 1) {
+	for (int row = 2; row < height - 2; ++row) {
+		for (int col = 2; col < width - 2; ++col) {
 			// Debayer algorithm starts here
 			float s1 = 0.0f, s2 = 0.0f, s3 = 0.0f, s4 = 0.0f, s5 = 0.0f, s6 = 0.0f;
 			s1 = in.at<uchar>(row, col-2) + in.at<uchar>(row, col+2);
-			s2 = in.at<uchar>(row-1, col) + in.at<uchar>(row+2, col);
+			s2 = in.at<uchar>(row-2, col) + in.at<uchar>(row+2, col);
 			s3 = in.at<uchar>(row, col-1) + in.at<uchar>(row, col+1);
 			s4 = in.at<uchar>(row-1, col) + in.at<uchar>(row+1, col);
 			s5 = in.at<uchar>(row-1, col-1) + in.at<uchar>(row-1, col+1) + in.at<uchar>(row+1, col-1) + in.at<uchar>(row+1, col+1);
@@ -80,8 +81,11 @@ void debayer_rggb_to_u8xbpp_hqlinear(const cv::Mat& in, cv::Mat& dest, int offse
 	}
 }
 
-void generate_filtered_image(const Mat& input_img, Mat& output_img, Vec3f& row_filter, Vec3f& col_filter) {
-  sepFilter2D(input_img, output_img, -1, row_filter, col_filter);
+void generate_filtered_image(const Mat& input_img, Mat& img_ll, Mat& img_lh, Mat& img_hl, Mat& img_hh, Vec3f& low_filter, Vec3f& high_filter) {
+  sepFilter2D(input_img, img_ll, -1, low_filter, low_filter);
+  sepFilter2D(input_img, img_lh, -1, low_filter, high_filter);
+  sepFilter2D(input_img, img_hl, -1, high_filter, low_filter);
+  sepFilter2D(input_img, img_hh, -1, high_filter, high_filter);
 }
 
 // Generate a bayer raw image. 
@@ -145,4 +149,18 @@ void generate_bayer_raw(const Mat& img_in, Mat& img_out, Mat& img_r, Mat& img_g,
       
       break;
   }
+}
+
+// Calculate Mean Square Error
+float calc_mse(const cv::Mat& img1, const cv::Mat& img2) {
+  assert(img1.rows == img2.rows);
+  assert(img1.cols == img2.cols);
+  cv::Mat diff = img1 - img2;
+  cv::Mat square_diff;
+  cv::pow(diff, 2, square_diff);
+  float total_square_diff = 0.0f;
+  for (int ch = 0; ch < img1.channels(); ++ch) {
+    total_square_diff += cv::sum(square_diff)[ch];
+  }
+  return total_square_diff / (img1.rows * img1.cols * img1.channels());
 }
